@@ -194,7 +194,7 @@ void Evans_a2AudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffe
             wetData[sample] = shapedSample;
             
             // add original dry signal with processed signal into our output buffer
-            channelData[sample] = channelData[sample] * 0.0f + wetData[sample] * 0.25f;
+            channelData[sample] = channelData[sample] * .4f + wetData[sample] * .6f;
             
             
         }
