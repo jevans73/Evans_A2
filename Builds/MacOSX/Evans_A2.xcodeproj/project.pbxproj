@@ -137,6 +137,10 @@
 			isa = PBXBuildFile;
 			fileRef = D52DA112015A58BC15CE9301;
 		};
+		45E44F4BEA7BC8CA99C21530 = {
+			isa = PBXBuildFile;
+			fileRef = 29BC0B9A11DB9C20458668E7;
+		};
 		24831EAFDACD36B2D204B221 = {
 			isa = PBXBuildFile;
 			fileRef = 54DF82923E964F367EE542D9;
@@ -198,6 +202,20 @@
 			name = PluginProcessor.h;
 			path = ../../Source/PluginProcessor.h;
 			sourceTree = "SOURCE_ROOT";
+		};
+		29BC0B9A11DB9C20458668E7 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.objcpp;
+			name = "include_juce_dsp.mm";
+			path = "../../JuceLibraryCode/include_juce_dsp.mm";
+			sourceTree = "SOURCE_ROOT";
+		};
+		327E54071A7C627FA0AD7581 = {
+			isa = PBXFileReference;
+			lastKnownFileType = file;
+			name = "juce_dsp";
+			path = "/Users/johnevans/Documents/Sdks/JUCE/modules/juce_dsp";
+			sourceTree = "<absolute>";
 		};
 		37330A76EF739D64F16B8D54 = {
 			isa = PBXFileReference;
@@ -601,6 +619,7 @@
 				4077AD330F7F14503986A50D,
 				4BD29227DD79F4BAACE5A7AB,
 				54EFCFC9A169A7BC9BF1045F,
+				327E54071A7C627FA0AD7581,
 				8C6963EAB0F1D365007D358F,
 				EFA9135DE8665F958C01EF05,
 				377A930588E3E273984CB4C7,
@@ -628,6 +647,7 @@
 				852B5D14C392885F04A49DCD,
 				AF9ECB714D8DFE27AE5268DA,
 				D52DA112015A58BC15CE9301,
+				29BC0B9A11DB9C20458668E7,
 				54DF82923E964F367EE542D9,
 				BEA926B835912D450D465894,
 				7D97294C07B03A3A3CDE4AC5,
@@ -1294,6 +1314,7 @@
 				5537FC6CD8A8029DBF32AA6A,
 				4DC39735AA50E09DF97F672A,
 				6AA64DD4B7029A2A3A394663,
+				45E44F4BEA7BC8CA99C21530,
 				24831EAFDACD36B2D204B221,
 				CFC6C21761AA1A803C78B9BC,
 				9486B145CA8C7B9EAC327D27,

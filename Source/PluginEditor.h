@@ -16,7 +16,7 @@
 //==============================================================================
 /**
 */
-class Evans_a2AudioProcessorEditor  : public AudioProcessorEditor
+class Evans_a2AudioProcessorEditor  : public AudioProcessorEditor, public Slider::Listener
 {
 public:
     Evans_a2AudioProcessorEditor (Evans_a2AudioProcessor&);
@@ -29,7 +29,19 @@ public:
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
+    Slider mixSlider;
+    Label mixLabel;
+    //================
+    Slider freqSlider;
+    Label freqLabel;
+    //================
+    Slider delaySlider;
+    Label delayLabel;
+    
+    
+    
+    void sliderValueChanged(Slider* slider) override;
+    
     Evans_a2AudioProcessor& processor;
-
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Evans_a2AudioProcessorEditor)
 };

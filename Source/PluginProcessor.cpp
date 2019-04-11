@@ -99,13 +99,29 @@ void Evans_a2AudioProcessor::changeProgramName (int index, const String& newName
 //==============================================================================
 void Evans_a2AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+
+    const int numInputChannels = getTotalNumInputChannels();
+    const int delayBufferSize = 2 * (sampleRate + samplesPerBlock);
+    mSampleRate = sampleRate;
+    
+    mDelayBuffer.setSize(numInputChannels, delayBufferSize);
+    
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
+    
     currentSampleRate = sampleRate;
     sinFreq = 60.0f;
     updateAngleDelta();
-    
-    
+    mixLevel.reset(sampleRate, 0.1f);
+    mixLevel.setTargetValue(0.15f);
+    mixLevel = 0.15f;
+    //==========================================
+    delayLevel.reset(sampleRate, 0.1f);
+    delayLevel.setTargetValue(0.15f);
+    delayLevel = 0.15f;
+    //==========================================
+    gain.setGainDecibels(12.0f);
+ 
 }
 
 void Evans_a2AudioProcessor::releaseResources()
@@ -154,8 +170,35 @@ void Evans_a2AudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffe
         buffer.clear (i, 0, buffer.getNumSamples());
     
     //set up another copy of input buffer so we can keep our original
-    AudioBuffer<float> wetBuffer(totalNumInputChannels, buffer.getNumSamples());
+    AudioBuffer<float> wetBuffer(totalNumInputChannels,
+    buffer.getNumSamples());
     wetBuffer.makeCopyOf(buffer);
+    
+    auto* channelData = buffer.getWritePointer (channel);
+    auto* wetData = wetBuffer.getWritePointer (channel);
+    
+    // ..do something to the each audio sample
+    for (int sample = 0; sample < 512; ++sample)
+    {
+        // generating a set of random values to modulate input amplitude
+        float modulator = random.nextFloat() * 0.25f - 0.125f;
+        wetData[sample] = wetData[sample] * modulator;
+        // calculating value to put into buffer
+        auto currentSinSample = (float) std::sin(currentAngle);
+        currentAngle += angleData; // currentAngle = currentAngle + angleDelta
+        // let's make our float wiggle
+        //float modulator = random.nextFloat() * 0.1f - 0.05f;
+        wetData[sample] = wetData[sample] * currentSinSample;
+        
+        
+        channelData[sample] = channelData[sample] * mixLevel.getNextValue();
+        
+        }
+        
+        {
+        dsp::AudioBlock<float> output(buffer);
+        gain.process(dsp::ProcessContextReplacing<float> (output));
+        }
     
     // This is the place where you'd normally do the guts of your plugin's
     // audio processing...
@@ -163,44 +206,76 @@ void Evans_a2AudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffe
     // the samples and the outer loop is handling the channels.
     // Alternatively, you can process the samples with the channels
     // interleaved by keeping the same state.
+    
+    const int bufferLength = buffer.getNumSamples();
+    const int delayBufferLength = mDelayBuffer.getNumSamples();
+    
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-        auto* channelData = buffer.getWritePointer (channel);
-        auto* wetData = wetBuffer.getWritePointer(channel);
+        const float* bufferData = buffer.getReadPointer(channel);
+        const float* delayBufferData = mDelayBuffer.getReadPointer(channel);
+        float* dryBuffer = buffer.getWritePointer(channel);
         
-        // ..do something to the each audio sample
-        for (int sample = 0; sample < 512; ++sample)
-        {
-            // generating a set of random values to modulate input amplitude
-            // float modulator = random.nextFloat() * 0.25f - 0.125f;
-            // wetData[sample] = wetData[sample] * modulator;
-            
-            // calculating value to put into buffer
-            auto currentSinSample = (float) std::sin(currentAngle);
-            currentAngle += angleData; // currentAngle = currentAngle + angleDelta
-            // let's make our float wiggle
-            // float modulator = random.nextFloat() * 0.1f - 0.05f;
-            wetData[sample] = wetData[sample] * currentSinSample;
-            
-            float quantum = powf( 1.0f, 0);
-            
-            auto shapedSample = floor(wetData[sample] * quantum ) / quantum;
-            
-            
-            // hard-clipping
-            // auto shapedSample = jlimit((float) - 0.1, (float) 0.1, wetData[sample]);
-            // soft-clip with hypobolic tangent
-            // auto shapedSample = (32 >> 1) * (float) std::tanh(16 * wetData[sample]/32);
-            wetData[sample] = shapedSample;
-            
-            // add original dry signal with processed signal into our output buffer
-            channelData[sample] = channelData[sample] * .4f + wetData[sample] * .6f;
-            
-            
-        }
+        fillDelayBuffer(channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
+        getFromDelayBuffer(buffer, channel, bufferLength, delayBufferLength, bufferData, delayBufferData);
+        feedbackDelay(channel, bufferLength, delayBufferLength, dryBuffer);
+    }
+    
+    mWritePosition += bufferLength;
+    mWritePosition %= delayBufferLength;
+    
+}
         
+void Evans_a2AudioProcessor::fillDelayBuffer (int channel, const int bufferLength, const int delayBufferLength, const float* bufferData, const float* delayBufferData)
+{
+    const float gain = 0.3;
+    
+    //copy the data from main buffer to delay buffer
+    if (delayBufferLength > bufferLength + mWritePosition)
+    {
+        mDelayBuffer.copyFromWithRamp(channel, mWritePosition, bufferData, bufferLength, gain, gain);
+    }
+    else {
+        const int bufferRemaining = delayBufferLength - mWritePosition;
+                
+        mDelayBuffer.copyFromWithRamp(channel, mWritePosition, bufferData, bufferRemaining, gain, gain);
+        mDelayBuffer.copyFromWithRamp(channel, 0, bufferData, bufferLength - bufferRemaining, gain, gain);
     }
 }
+
+void Evans_a2AudioProcessor::getFromDelayBuffer (AudioBuffer<float>& buffer, int channel, const int bufferLength, const int delayBufferLength, const float* bufferData, const float* delayBufferData)
+{
+    int delayTime = 75;
+    const int readPosition = static_cast<int> (delayBufferLength + mWritePosition - (mSampleRate * delayTime /1000)) % delayBufferLength;
+    
+    if (delayBufferLength > bufferLength + readPosition)
+    {
+        buffer.copyFrom(channel, 0, delayBufferData + readPosition, bufferLength);
+    }
+    else {
+        const int bufferRemaining = delayBufferLength - readPosition;
+        buffer.copyFrom(channel, 0, delayBufferData + readPosition, bufferRemaining);
+        buffer.copyFrom(channel, bufferRemaining, delayBufferData, bufferLength - bufferRemaining);
+}
+}
+                                            
+void Evans_a2AudioProcessor::feedbackDelay (int channel, const int bufferLength, const int delayBufferLength, float*dryBuffer)
+{
+    if (delayBufferLength > bufferLength + mWritePosition)
+    {
+        mDelayBuffer.addFromWithRamp(channel, mWritePosition, dryBuffer, bufferLength, 0.8, 0.8);
+    }
+    else {
+        const int bufferRemaining = delayBufferLength - mWritePosition;
+        
+        mDelayBuffer.addFromWithRamp(channel, bufferRemaining, dryBuffer, bufferRemaining, 0.8, 0.8);
+        mDelayBuffer.addFromWithRamp(channel, 0, dryBuffer, bufferLength - bufferRemaining, 0.8, 0.8);
+    }
+    
+    
+}
+
+
 
 //==============================================================================
 bool Evans_a2AudioProcessor::hasEditor() const

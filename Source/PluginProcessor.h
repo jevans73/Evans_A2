@@ -18,6 +18,7 @@
 class Evans_a2AudioProcessor  : public AudioProcessor
 {
 public:
+    
     //==============================================================================
     Evans_a2AudioProcessor();
     ~Evans_a2AudioProcessor();
@@ -54,14 +55,47 @@ public:
     //==============================================================================
     void getStateInformation (MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+    
+    SmoothedValue<float> mixLevel;
+    dsp::Gain<float> gain;
+    
+    //===============================================================================
+    SmoothedValue<float> delayLevel;
+    
+    //=========================================
+    
+    void fillDelayBuffer (int channel, const int bufferLength, const int delayBufferLength, const float* bufferData, const float* delayBufferData);
+    
+    void getFromDelayBuffer (AudioBuffer<float>& buffer, int channel, const int bufferLength, const int delayBufferLength, const float* bufferData, const float* delayBufferData);
+
+    void feedbackDelay (int channel, const int bufferLength, const int delayBufferLength, float* dryBuffer);
+
+
 
 private:
+    
     float currentSampleRate;
     float currentAngle;
     float angleData;
     float sinFreq;
     
+    float channel;
+    float modulator;
+    
+    //====================================================================
+    
+    AudioBuffer<float> mDelayBuffer;
+    int mWritePosition { 0 };
+    int mSampleRate { 44100 };
+    
+    //=========================================================================
+    
+    //dps::Gain<float> gain;
+    
     void updateAngleDelta();
+    
+    //==============================================================================
+    
     Random random;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Evans_a2AudioProcessor)
